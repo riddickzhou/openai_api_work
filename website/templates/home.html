@@ -40,6 +40,14 @@
     </div>
 </form>
 
+<!-- JSON file upload form -->
+    <h2>Generate Machine Feedback</h2>
+    <div align="center">
+        <!-- Add the "Generate Machine Feedback" button beside the "Upload" button -->
+        <button id="generateMachineFeedbackButton" class="btn btn-primary">OpenAI API Call</button>
+    </div>
+
+
 <!-- Display JsonItem data -->
 <h2>Database Items:</h2>
 <ul>
@@ -51,7 +59,8 @@
         <strong>Machine Feedback:</strong> {{ json_item.machine_feedback }}<br>
         <strong>Human Feedback:</strong> {{ json_item.human_feedback }}<br>
         <div class="human_feedback-container">
-            <textarea id="human_feedback_{{json_item.id}}" class="human_feedback-editable form-control" style="color: blue;">{{ json_item.human_feedback }}</textarea>
+            <textarea id="human_feedback_{{json_item.id}}" class="human_feedback-editable form-control"
+                      style="color: blue;">{{ json_item.human_feedback }}</textarea>
             <button class="save-button btn btn-success">Save Human Feedback</button>
             <button class="delete-button btn btn-danger">Delete Json Item</button>
         </div>
@@ -184,7 +193,41 @@
                     });
             }
         });
+
+        // Add an event listener to the "Generate Machine Feedback" button
+        const generateMachineFeedbackButton = document.getElementById('generateMachineFeedbackButton');
+        generateMachineFeedbackButton.addEventListener('click', function () {
+            // Display a confirmation dialog using the built-in JavaScript confirm() function
+            const confirmed = confirm('Are you sure you want to generate machine feedback? This will overwrite all existing machine feedback.');
+
+            // Check if the user confirmed the action
+            if (confirmed) {
+                // Send a request to the server to generate machine feedback
+                fetch('/gpt/generate_machine_feedback', {
+                    method: 'POST',
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Refresh the page to reflect the generated machine feedback
+                            window.location.reload();
+                            // Handle the success case, such as displaying or using the generated machine feedback
+                            alert('Machine feedback generated successfully.');
+                        } else {
+                            // Handle the error case
+                            alert('Failed to generate machine feedback.');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                    });
+            } else {
+                // If the user canceled, simply refresh the page
+                window.location.reload();
+            }
+        });
     });
+
 
 </script>
 </div>

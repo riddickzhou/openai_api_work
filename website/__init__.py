@@ -15,9 +15,11 @@ def create_app():
 
     from .views import views
     from .auth import auth
+    from .gpt import gpt
 
     application.register_blueprint(views, url_prefix='/')
     application.register_blueprint(auth, url_prefix='/')
+    application.register_blueprint(gpt, url_prefix='/gpt')
 
     from .models import User, Note
     
