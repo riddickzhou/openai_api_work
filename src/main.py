@@ -2,8 +2,8 @@ import openai
 import os
 import time
 
-def summarize_text(text, max_length=4096, step=4000):
-    model = 'text-davinci-003'
+def summarize_text(text, max_length=2048, step=2000):
+    model = 'gpt-3.5-turbo-instruct-0914'
     summarized_text = ""
 
     for i in range(0, len(text), step):
@@ -46,5 +46,16 @@ def main(input_file):
 
 if __name__ == "__main__":
     input_file = 'The History of Jazz.txt'
-    main(input_file)
+    response = openai.ChatCompletion.create(
+        model="gpt-4",
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": "Who won the world series in 2020?"},
+            {"role": "assistant", "content": "The Los Angeles Dodgers won the World Series in 2020."},
+            {"role": "user", "content": "Where was it played?"}
+        ]
+    )
+    print(response)
+    print()
+    # main(input_file)
 
