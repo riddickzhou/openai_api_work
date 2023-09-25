@@ -19,8 +19,10 @@ class User(db.Model, UserMixin):
     notes = db.relationship('Note')
 
 
-class JsonItem(db.Model):
+class PromptResponse(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    prompt = db.Column(db.String(10000), nullable=False)
-    response = db.Column(db.String(10000), nullable=False)
+    prompt = db.Column(db.String(100000), nullable=False)
+    response = db.Column(db.String(100000), nullable=False)
+    machine_feedback = db.Column(db.String(100000))
+    human_feedback = db.Column(db.String(100000))
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)  # Assuming you have a User model

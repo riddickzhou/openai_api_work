@@ -3,61 +3,198 @@
 {% block title %}Home{% endblock %}
 
 {% block content %}
-<h1 align="center">My PromptResponse</h1>
+<h1 align="center">Prompt-Response Annotation System</h1>
 <ul class="list-group list-group-flush" id="notes">
-  {% for note in user.notes %}
-  <li class="list-group-item">
-    {{ note.data }}
-    <button type="button" class="close" onClick="deleteNote({{ note.id }})">
-      <span aria-hidden="true">&times;</span>
-    </button>
-    <br />
-    <label for="processed_text">Processed Text:</label>
-    <textarea name="processed_text_{{ note.id }}" id="processed_text_{{ note.id }}" class="form-control" placeholder="Processed text for this note" readonly>{{ note.processed_data }}</textarea>
-    <br />
-  </li>
-  {% endfor %}
+    {% for note in user.notes %}
+    <li class="list-group-item">
+        {{ note.data }}
+        <button type="button" class="close" onClick="deleteNote({{ note.id }})">
+            <span aria-hidden="true">&times;</span>
+        </button>
+        <br/>
+        <label for="processed_text">Processed Text:</label>
+        <textarea name="processed_text_{{ note.id }}" id="processed_text_{{ note.id }}" class="form-control"
+                  placeholder="Processed text for this note" readonly>{{ note.processed_data }}</textarea>
+        <br/>
+    </li>
+    {% endfor %}
 </ul>
 
 <!-- Display flash messages -->
 {% with messages = get_flashed_messages() %}
-   {% if messages %}
-       <ul class="messages">
-           {% for message in messages %}
-               <li>{{ message }}</li>
-           {% endfor %}
-       </ul>
-   {% endif %}
+{% if messages %}
+<ul class="messages">
+    {% for message in messages %}
+    <li>{{ message }}</li>
+    {% endfor %}
+</ul>
+{% endif %}
 {% endwith %}
 
 <!-- JSON file upload form -->
 <form method="POST" enctype="multipart/form-data" action="/upload_json">
-  <h2>Upload JSON File</h2>
-  <input type="file" name="json_file">
-  <br />
-
-  <textarea name="note" id="note" class="form-control"></textarea>
-  <br />
-  <div align="center">
-    <button type="submit" class="btn btn-primary">Upload</button>
-  </div>
+    <h2>Upload JSON File</h2>
+    <input type="file" name="json_file" id="jsonFileInput">
+    <div align="center">
+        <button type="submit" class="btn btn-primary" id="uploadButton" disabled>Upload</button>
+    </div>
 </form>
 
 <!-- Display JsonItem data -->
-<h2>Uploaded JSON Items:</h2>
+<h2>Database Items:</h2>
 <ul>
-  {% for json_item in json_items %}
+    {% for json_item in json_items %}
     <li>
-      <strong>Prompt:</strong> {{ json_item.prompt }}<br>
-      <strong>Response:</strong> {{ json_item.response }}
+        <strong>json_item.id:</strong> {{ json_item.id }}<br>
+        <strong>Prompt:</strong> {{ json_item.prompt }}<br>
+        <strong>Response:</strong> {{ json_item.response }}<br>
+        <strong>Machine Feedback:</strong> {{ json_item.machine_feedback }}<br>
+        <strong>Human Feedback:</strong> {{ json_item.human_feedback }}<br>
+        <div class="human_feedback-container">
+            <textarea id="human_feedback_{{json_item.id}}" class="human_feedback-editable form-control" style="color: blue;">{{ json_item.human_feedback }}</textarea>
+            <button class="save-button btn btn-success">Save</button>
+            <button class="delete-button btn btn-danger">Delete</button>
+        </div>
     </li>
-  {% endfor %}
+    {% endfor %}
 </ul>
 
 
-<!-- Add the download link at the top right -->
-<div style="position: absolute; top: 10px; right: 10px;">
-  <a href="{{ url_for('views.download_json') }}" class="btn btn-primary" download>Download JSON Full Database</a>
+<script>
+    // JavaScript to handle enabling/disabling the "Upload" button based on file selection
+    // Get references to the file input and the "Upload" button
+    const fileInput = document.getElementById('jsonFileInput');
+    const uploadButton = document.getElementById('uploadButton');
+
+    // Add an event listener to the file input
+    fileInput.addEventListener('change', function () {
+        if (fileInput.files.length > 0) {
+            // A file has been selected, enable the "Upload" button
+            uploadButton.disabled = false;
+        } else {
+            // No file selected, disable the "Upload" button
+            uploadButton.disabled = true;
+        }
+    });
+
+    // JavaScript to handle editing, saving, and deleting JSON items
+    document.addEventListener('DOMContentLoaded', function () {
+        // Get references to editable textareas, Edit buttons, Save buttons, and Delete buttons
+        const human_feedbackContainers = document.querySelectorAll('.human_feedback-container');
+
+        human_feedbackContainers.forEach(container => {
+            const textarea = container.querySelector('.human_feedback-editable');
+            const saveButton = container.querySelector('.save-button');
+            const deleteButton = container.querySelector('.delete-button');
+
+            // Save changes when the Save button is clicked
+            saveButton.addEventListener('click', function () {
+                // Get the JSON item ID and edited human_feedback text
+                const jsonItemId = textarea.id.split('_')[2];
+                const editedHumanFeedback = textarea.value;
+                console.log("textarea.id:", textarea.id);
+                console.log("jsonItemId:", jsonItemId);
+                console.log("editedHumanFeedback:", editedHumanFeedback);
+
+                // Send the edited data to the server using AJAX
+                fetch('/save_json_item', {
+                    method: 'POST',
+                    body: JSON.stringify({json_item_id: jsonItemId, edited_human_feedback: editedHumanFeedback}),
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                })
+                    .then(human_feedback => human_feedback.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Update the success message or UI as needed
+                            saveButton.style.display = 'inline-block';
+
+                            // Refresh the page
+                            window.location.reload();
+                        } else {
+                            // Handle the error case
+                            alert('Failed to save changes.');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                    });
+            });
+
+            // Delete the JSON item when the Delete button is clicked
+            deleteButton.addEventListener('click', function () {
+                // Get the JSON item ID from the textarea ID
+                const jsonItemId = textarea.id.split('_')[1];
+
+                // Send a request to delete the JSON item using AJAX
+                fetch('/delete_json_item', {
+                    method: 'POST',
+                    body: JSON.stringify({json_item_id: jsonItemId}),
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                })
+                    .then(human_feedback => human_feedback.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Refresh the page
+                            window.location.reload();
+
+                            // // Remove the item from the UI
+                            // container.remove();
+                        } else {
+                            // Handle the error case
+                            alert('Failed to delete item.');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                    });
+            });
+        });
+        // Get references to the "Delete All Items" button
+        const deleteAllItemsButton = document.getElementById('deleteAllItemsButton');
+        // Add an event listener to the "Delete All Items" button
+        deleteAllItemsButton.addEventListener('click', function () {
+            // Display a confirmation dialog using the built-in JavaScript confirm() function
+            const confirmed = confirm('Are you sure you want to delete all items? This action cannot be undone.');
+
+            // Check if the user confirmed the action
+            if (confirmed) {
+                // Send a request to delete all items using AJAX
+                fetch('/delete_all_json_items', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                })
+                    .then(human_feedback => human_feedback.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Refresh the page to reflect the deleted items
+                            window.location.reload();
+                        } else {
+                            // Handle the error case
+                            alert('Failed to delete all items.');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                    });
+            }
+        });
+    });
+
+</script>
 </div>
+
+<div style="position: absolute; top: 10px; right: 10px;">
+    <!-- Button to delete all items -->
+    <button id="deleteAllItemsButton" class="btn btn-danger">Erase Database</button>
+    <!-- Add the download link at the top right -->
+    <a href="{{ url_for('views.download_json') }}" class="btn btn-primary" download>Download Database</a>
+</div>
+
 
 {% endblock %}
