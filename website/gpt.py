@@ -4,7 +4,7 @@ import datetime
 from flask_login import login_required, current_user
 from flask import Blueprint, jsonify
 from .models import PromptResponse
-from . import db
+from . import mongo
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 MODEL = 'gpt-3.5-turbo'
@@ -53,17 +53,20 @@ def get_results(input_messages):
 @gpt.route('/generate_machine_feedback', methods=['GET', 'POST'])
 @login_required
 def generate_machine_feedback():
-    # Retrieve all JsonItem objects from the database
-    json_items = PromptResponse.query.all()
+    # Retrieve all PromptResponse documents from the MongoDB collection
+    prompt_responses = mongo.db.prompt_responses.find()
 
-    # Iterate through the JsonItem objects and update the machine_feedback column
-    for json_item in json_items:
-        message = build_messages(json_item.prompt, json_item.response)
-        # Update the machine_feedback column
-        json_item.machine_feedback = get_results(message)
-        # json_item.machine_feedback = "dummy machine feedback added"
+    # Iterate through the PromptResponse documents and update the machine_feedback field
+    for prompt_response in prompt_responses:
+        message = build_messages(prompt_response['prompt'], prompt_response['response'])
+        # Update the machine_feedback field
+        prompt_response['machine_feedback'] = get_results(message)
+        # prompt_response['machine_feedback'] = "dummy machine feedback added"
 
-        # Commit the changes to the database
-        db.session.commit()
+        # Save the updated document back to MongoDB
+        mongo.db.prompt_responses.update_one(
+            {'_id': prompt_response['_id']},
+            {'$set': {'machine_feedback': prompt_response['machine_feedback']}}
+        )
 
     return jsonify(success=True)

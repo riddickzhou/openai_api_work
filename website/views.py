@@ -1,48 +1,34 @@
 from flask import Blueprint, Response, render_template, request, flash, redirect, jsonify, make_response
-from . import db   ##means from __init__.py import db
+from . import mongo
 from flask_login import login_required, current_user
 import json
-from .models import Note, PromptResponse
+from .models import PromptResponse
+from bson import json_util
+from collections import defaultdict
+import uuid
+from datetime import datetime
 
 views = Blueprint('views', __name__)
+
 
 @views.route('/', methods=['GET', 'POST'])
 @login_required
 def home():
-
-    processed_text = ""  # Initialize an empty processed text
-
-    if request.method == 'POST': 
-        note = request.form.get('note')#Gets the note from the HTML 
-
-        if len(note) < 1:
-            flash('Note is too short!', category='error') 
-        else:
-            # Process the note
-            processed_text = process_text(note)
-            new_note = Note(data=note, processed_data=processed_text, user_id=current_user.id)  #providing the schema for the note 
-            db.session.add(new_note) #adding the note to the database 
-            db.session.commit()
-            flash('Note added!', category='success')
-
-    # Retrieve JsonItem data from the database
-    json_items = PromptResponse.query.all()
-
-    return render_template("home.html", user=current_user, json_items=json_items)
-
-
-@views.route('/delete-note', methods=['POST'])
-def delete_note():  
-    note = json.loads(request.data) # this function expects a JSON from the INDEX.js file 
-    noteId = note['noteId']
-    note = Note.query.get(noteId)
-    if note:
-        if note.user_id == current_user.id:
-            db.session.delete(note)
-            db.session.commit()
-
-    return jsonify({})
-
+    # Retrieve PromptResponse data from the MongoDB collection
+    json_items = mongo.db.prompt_responses.find({'user_id': current_user.id})
+    json_items_list = []
+    for item in json_items:
+        prompt_response = PromptResponse(
+            prompt=item['prompt'],
+            response=item['response'],
+            machine_feedback=item.get('machine_feedback', ''),
+            human_feedback=item.get('human_feedback', ''),
+            user_id=item.get('user_id', ''),
+            _id=item.get('_id', ''),
+            created_at=item.get('created_at', '')
+        )
+        json_items_list.append(prompt_response)
+    return render_template("home.html", user=current_user, json_items=json_items_list)
 
 
 @views.route('/upload_json', methods=['POST'])
@@ -70,20 +56,22 @@ def upload_json():
             for item in data_list:
                 prompt = item.get('prompt', '')
                 response = item.get('response', '')
+                current_datetime = datetime.now()
+                formatted_datetime = current_datetime.strftime('%Y-%m-%d %H:%M:%S')
 
-                # Save the prompt and response to the database
+                # Save the prompt and response to the MongoDB collection
                 new_item = PromptResponse(
                     prompt=prompt,
                     response=response,
                     machine_feedback='',
                     human_feedback='',
-                    user_id=current_user.id
+                    user_id=current_user.id,
+                    _id=uuid.uuid4().hex,
+                    created_at=formatted_datetime
                 )
-                db.session.add(new_item)
+                mongo.db.prompt_responses.insert_one(new_item.__dict__)
 
-            db.session.commit()
-
-            flash(f'Items from {file} uploaded and saved to the database.', category='success')
+            flash(f'Items from {file.filename} uploaded and saved to the database.', category='success')
         except Exception as e:
             flash(f'Error processing JSON file: {str(e)}', category='error')
 
@@ -92,53 +80,37 @@ def upload_json():
     return redirect('/')
 
 
-def process_text(text):
-    return text[::-1]
-
-
 def remove_duplicate_json_items():
     # Find duplicate items based on "prompt" and "response" values
-    duplicate_items = (
-        db.session.query(PromptResponse.prompt, PromptResponse.response)
-        .group_by(PromptResponse.prompt, PromptResponse.response)
-        .having(db.func.count() > 1)
-        .distinct()
-        .all()
-    )
+    cursor = mongo.db.prompt_responses.find({}, {'prompt': 1, 'response': 1})
+
+    # Create a dictionary to store items grouped by prompt and response
+    grouped_items = defaultdict(list)
+
+    # Iterate through the cursor and group items
+    for item in cursor:
+        prompt = item['prompt']
+        response = item['response']
+        grouped_items[(prompt, response)].append(item['_id'])
 
     # Remove duplicates, keeping the first occurrence
-    for prompt, response in duplicate_items:
-        duplicate_items_to_remove = PromptResponse.query.filter_by(prompt=prompt, response=response).all()
+    for items_to_remove in grouped_items.values():
+        print(items_to_remove)
+        if len(items_to_remove) > 1:
+            # Keep the first occurrence and delete the rest
+            items_to_delete = items_to_remove[1:]
 
-        # Keep the first occurrence and delete the rest
-        for item in duplicate_items_to_remove[1:]:
-            db.session.delete(item)
-
-    db.session.commit()
+            for item_id in items_to_delete:
+                mongo.db.prompt_responses.delete_one({'_id': item_id})
 
 
 @views.route('/download_json', methods=['GET'])
 def download_json():
-    # Query the JsonItem table to retrieve the JSON data
-    json_items = PromptResponse.query.all()
-
-    # Create a list to store JSON objects
-    json_data = []
-
-    for item in json_items:
-        json_data.append({
-            'prompt': item.prompt,
-            'response': item.response,
-            'machine_feedback': item.machine_feedback,
-            'human_feedback': item.human_feedback,
-        })
-
-    # Convert the list of JSON objects to a JSON string
-    json_string = json.dumps(json_data, ensure_ascii=False, indent=2)
+    # Query the MongoDB collection to retrieve the JSON data
+    json_items = mongo.db.prompt_responses.find()
 
     # Create a response with the JSON content and set the headers
-    response = make_response(json_string)
-    response.headers['Content-Type'] = 'application/json'
+    response = Response(json_util.dumps(json_items, indent=2), content_type='application/json')
     response.headers['Content-Disposition'] = 'attachment; filename=json_data.json'
 
     return response
@@ -152,17 +124,17 @@ def save_json_item():
         data = request.get_json()  # Retrieve JSON data from the request body
         json_item_id = data.get('json_item_id')
         edited_human_feedback = data.get('edited_human_feedback')
+        print('data:', data)
+        print('edited_human_feedback:', edited_human_feedback)
+        print('json_item_id:', json_item_id)
 
-        # Update the JSON item in the database
-        json_item = PromptResponse.query.get(json_item_id)
+        # Update the JSON item in the MongoDB collection
+        mongo.db.prompt_responses.update_one(
+            {'_id': json_item_id, 'user_id': current_user.id},
+            {'$set': {'human_feedback': edited_human_feedback}}
+        )
 
-        if json_item:
-            json_item.human_feedback = edited_human_feedback
-            db.session.commit()
-
-            return jsonify(success=True, message='Changes saved')
-        else:
-            return jsonify(success=False, message='JSON item not found'), 404
+        return jsonify(success=True, message='Changes saved')
     except Exception as e:
         return jsonify(success=False, message=str(e))
 
@@ -174,30 +146,17 @@ def delete_json_item():
     try:
         data = request.get_json()
         json_item_id = data.get('json_item_id')
+        print (json_item_id)
 
-        # Retrieve the JSON item from the database
-        json_item = PromptResponse.query.get(json_item_id)
+        # Delete the JSON item from the MongoDB collection
+        result = mongo.db.prompt_responses.delete_one({'_id': json_item_id, 'user_id': current_user.id})
 
-        if json_item:
-            # Check if the logged-in user owns the JSON item (you may need to implement this check)
-            if json_item.user_id == current_user.id:
-                db.session.delete(json_item)
-                db.session.commit()
-                return jsonify(success=True, message='JSON item deleted')
-            else:
-                return jsonify(success=False, message='You do not have permission to delete this JSON item'), 403
+        if result.deleted_count > 0:
+            return jsonify(success=True, message='JSON item deleted')
         else:
             return jsonify(success=False, message='JSON item not found'), 404
     except Exception as e:
         return jsonify(success=False, message=str(e))
-
-
-# Server-side route to fetch JSON items
-@views.route('/get_json_items', methods=['GET'])
-@login_required
-def get_json_items():
-    json_items = PromptResponse.query.all()
-    return jsonify(json_items=[json_item.serialize() for json_item in json_items])
 
 
 @views.route('/delete_all_json_items', methods=['POST'])
@@ -205,11 +164,11 @@ def get_json_items():
 def delete_all_json_items():
     try:
         # Delete all JSON items associated with the current user
-        PromptResponse.query.filter_by(user_id=current_user.id).delete()
-        db.session.commit()
-        return jsonify(success=True, message='All items deleted')
-    except Exception as e:
-        print(e)
-        db.session.rollback()
-        return jsonify(success=False, message='Failed to delete all items'), 500
+        result = mongo.db.prompt_responses.delete_many({'user_id': current_user.id})
 
+        if result.deleted_count > 0:
+            return jsonify(success=True, message='All items deleted')
+        else:
+            return jsonify(success=False, message='No items found to delete')
+    except Exception as e:
+        return jsonify(success=False, message=str(e))

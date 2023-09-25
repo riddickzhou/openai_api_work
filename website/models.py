@@ -1,28 +1,21 @@
-from . import db
 from flask_login import UserMixin
-from sqlalchemy.sql import func
 
 
-class Note(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    data = db.Column(db.String(10000))
-    processed_data = db.Column(db.String(10000))  # New field for processed text
-    date = db.Column(db.DateTime(timezone=True), default=func.now())
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+class User(UserMixin):
+    def __init__(self, user_data):
+        self.id = user_data['id']
+        self.email = user_data['email']
+        self.password = user_data['password']
+        self.first_name = user_data['first_name']
 
 
-class User(db.Model, UserMixin):
-    id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String(150), unique=True)
-    password = db.Column(db.String(150))
-    first_name = db.Column(db.String(150))
-    notes = db.relationship('Note')
-
-
-class PromptResponse(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    prompt = db.Column(db.String(100000), nullable=False)
-    response = db.Column(db.String(100000), nullable=False)
-    machine_feedback = db.Column(db.String(100000))
-    human_feedback = db.Column(db.String(100000))
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)  # Assuming you have a User model
+class PromptResponse:
+    def __init__(self, prompt, response, machine_feedback=None, human_feedback=None, user_id=None, _id=None,
+                 created_at=None):
+        self.prompt = prompt
+        self.response = response
+        self.machine_feedback = machine_feedback
+        self.human_feedback = human_feedback
+        self.user_id = user_id
+        self._id = _id
+        self.created_at = created_at

@@ -41,11 +41,11 @@
 </form>
 
 <!-- JSON file upload form -->
-    <h2>Generate Machine Feedback</h2>
-    <div align="center">
-        <!-- Add the "Generate Machine Feedback" button beside the "Upload" button -->
-        <button id="generateMachineFeedbackButton" class="btn btn-primary">OpenAI API Call</button>
-    </div>
+<h2>Generate Machine Feedback</h2>
+<div align="center">
+    <!-- Add the "Generate Machine Feedback" button beside the "Upload" button -->
+    <button id="generateMachineFeedbackButton" class="btn btn-primary">OpenAI API Call</button>
+</div>
 
 
 <!-- Display JsonItem data -->
@@ -53,13 +53,13 @@
 <ul>
     {% for json_item in json_items %}
     <li>
-        <strong>json_item.id:</strong> {{ json_item.id }}<br>
+        <strong>json_item._id:</strong> {{ json_item._id }}<br>
         <strong>Prompt:</strong> {{ json_item.prompt }}<br>
         <strong>Response:</strong> {{ json_item.response }}<br>
         <strong>Machine Feedback:</strong> {{ json_item.machine_feedback }}<br>
         <strong>Human Feedback:</strong> {{ json_item.human_feedback }}<br>
         <div class="human_feedback-container">
-            <textarea id="human_feedback_{{json_item.id}}" class="human_feedback-editable form-control"
+            <textarea id="human_feedback_{{json_item._id}}" class="human_feedback-editable form-control"
                       style="color: blue;">{{ json_item.human_feedback }}</textarea>
             <button class="save-button btn btn-success">Save Human Feedback</button>
             <button class="delete-button btn btn-danger">Delete Json Item</button>
@@ -134,7 +134,7 @@
             // Delete the JSON item when the Delete button is clicked
             deleteButton.addEventListener('click', function () {
                 // Get the JSON item ID from the textarea ID
-                const jsonItemId = textarea.id.split('_')[1];
+                const jsonItemId = textarea.id.split('_')[2];
 
                 // Send a request to delete the JSON item using AJAX
                 fetch('/delete_json_item', {
@@ -202,12 +202,17 @@
 
             // Check if the user confirmed the action
             if (confirmed) {
+                // Display the processing modal before starting the operation
+                showProcessingModal();
+
                 // Send a request to the server to generate machine feedback
                 fetch('/gpt/generate_machine_feedback', {
                     method: 'POST',
                 })
                     .then(response => response.json())
                     .then(data => {
+                        // Hide the processing modal when the request is complete
+                        hideProcessingModal();
                         if (data.success) {
                             // Refresh the page to reflect the generated machine feedback
                             window.location.reload();
@@ -219,6 +224,8 @@
                         }
                     })
                     .catch(error => {
+                        // Hide the processing modal on error
+                        hideProcessingModal();
                         console.error('Error:', error);
                     });
             } else {
@@ -226,6 +233,18 @@
                 window.location.reload();
             }
         });
+
+        // Function to show the processing modal
+        function showProcessingModal() {
+            const modal = document.getElementById('processingModal');
+            modal.style.display = 'block';
+        }
+
+// Function to hide the processing modal
+        function hideProcessingModal() {
+            const modal = document.getElementById('processingModal');
+            modal.style.display = 'none';
+        }
     });
 
 
@@ -237,6 +256,14 @@
     <button id="deleteAllItemsButton" class="btn btn-danger">Erase Database</button>
     <!-- Add the download link at the top right -->
     <a href="{{ url_for('views.download_json') }}" class="btn btn-primary" download>Download Database</a>
+</div>
+
+<!-- Modal -->
+<div id="processingModal" class="modal">
+    <div class="modal-content">
+        <div class="loader"></div> <!-- Loading spinner or custom message -->
+        <p>Processing OpenAI API Request...</p> <!-- Optional message -->
+    </div>
 </div>
 
 
