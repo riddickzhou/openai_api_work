@@ -17,3 +17,10 @@ class User(db.Model, UserMixin):
     password = db.Column(db.String(150))
     first_name = db.Column(db.String(150))
     notes = db.relationship('Note')
+
+
+class JsonItem(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    prompt = db.Column(db.String(10000), nullable=False)
+    response = db.Column(db.String(10000), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)  # Assuming you have a User model

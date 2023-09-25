@@ -1,5 +1,8 @@
-{% extends "base.html" %} {% block title %}Home{% endblock %} {% block content
-%}
+{% extends "base.html" %}
+
+{% block title %}Home{% endblock %}
+
+{% block content %}
 <h1 align="center">Notes</h1>
 <ul class="list-group list-group-flush" id="notes">
   {% for note in user.notes %}
@@ -15,14 +18,40 @@
   </li>
   {% endfor %}
 </ul>
-<form method="POST">
+
+<!-- Display flash messages -->
+{% with messages = get_flashed_messages() %}
+   {% if messages %}
+       <ul class="messages">
+           {% for message in messages %}
+               <li>{{ message }}</li>
+           {% endfor %}
+       </ul>
+   {% endif %}
+{% endwith %}
+
+<!-- JSON file upload form -->
+<form method="POST" enctype="multipart/form-data" action="/upload_json">
+  <h2>Upload JSON File</h2>
+  <input type="file" name="json_file">
+  <br />
+
   <textarea name="note" id="note" class="form-control"></textarea>
   <br />
   <div align="center">
     <button type="submit" class="btn btn-primary">Add Note</button>
   </div>
-
 </form>
 
+<!-- Display JsonItem data -->
+<h2>Uploaded JSON Items:</h2>
+<ul>
+  {% for json_item in json_items %}
+    <li>
+      <strong>Prompt:</strong> {{ json_item.prompt }}<br>
+      <strong>Response:</strong> {{ json_item.response }}
+    </li>
+  {% endfor %}
+</ul>
 
 {% endblock %}
