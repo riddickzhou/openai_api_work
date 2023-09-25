@@ -54,4 +54,10 @@
   {% endfor %}
 </ul>
 
+
+<!-- Add the download link at the top right -->
+<div style="position: absolute; top: 10px; right: 10px;">
+  <a href="{{ url_for('views.download_json') }}" class="btn btn-primary" download>Download JSON Full Database</a>
+</div>
+
 {% endblock %}

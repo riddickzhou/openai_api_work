@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, flash, redirect,jsonify
+from flask import Blueprint, Response, render_template, request, flash, redirect, jsonify, make_response
 from . import db   ##means from __init__.py import db
 from flask_login import login_required, current_user
 import json
@@ -113,3 +113,28 @@ def remove_duplicate_json_items():
             db.session.delete(item)
 
     db.session.commit()
+
+
+@views.route('/download_json', methods=['GET'])
+def download_json():
+    # Query the JsonItem table to retrieve the JSON data
+    json_items = JsonItem.query.all()
+
+    # Create a list to store JSON objects
+    json_data = []
+
+    for item in json_items:
+        json_data.append({
+            'prompt': item.prompt,
+            'response': item.response
+        })
+
+    # Convert the list of JSON objects to a JSON string
+    json_string = json.dumps(json_data, ensure_ascii=False, indent=2)
+
+    # Create a response with the JSON content and set the headers
+    response = make_response(json_string)
+    response.headers['Content-Type'] = 'application/json'
+    response.headers['Content-Disposition'] = 'attachment; filename=json_data.json'
+
+    return response
