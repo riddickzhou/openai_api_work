@@ -110,7 +110,7 @@ def download_json():
     json_items = mongo.db.prompt_responses.find()
 
     # Create a response with the JSON content and set the headers
-    response = Response(json_util.dumps(json_items, indent=2), content_type='application/json')
+    response = Response(json_util.dumps(json_items, ensure_ascii=False, indent=2).encode('utf-8'), content_type='application/json')
     response.headers['Content-Disposition'] = 'attachment; filename=json_data.json'
 
     return response
