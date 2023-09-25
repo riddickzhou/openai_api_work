@@ -81,7 +81,7 @@ def upload_json():
 
             db.session.commit()
 
-            flash('JSON file uploaded and saved to the database.', category='success')
+            flash(f'Items from {file} uploaded and saved to the database.', category='success')
         except Exception as e:
             flash(f'Error processing JSON file: {str(e)}', category='error')
 
