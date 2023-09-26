@@ -82,13 +82,13 @@ def upload_json():
 
 def remove_duplicate_json_items():
     # Find duplicate items based on "prompt" and "response" values
-    cursor = mongo.db.prompt_responses.find({}, {'prompt': 1, 'response': 1})
+    json_items = mongo.db.prompt_responses.find()
 
     # Create a dictionary to store items grouped by prompt and response
     grouped_items = defaultdict(list)
 
     # Iterate through the cursor and group items
-    for item in cursor:
+    for item in json_items:
         prompt = item['prompt']
         response = item['response']
         grouped_items[(prompt, response)].append(item['_id'])
