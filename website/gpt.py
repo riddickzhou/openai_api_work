@@ -54,7 +54,7 @@ def get_results(input_messages):
 @login_required
 def generate_machine_feedback():
     # Retrieve all PromptResponse documents from the MongoDB collection
-    prompt_responses = mongo.db.prompt_responses.find()
+    prompt_responses = mongo.db.prompt_responses.find({'user_id': current_user.id})
 
     # Iterate through the PromptResponse documents and update the machine_feedback field
     for prompt_response in prompt_responses:
