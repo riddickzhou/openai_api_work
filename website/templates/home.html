@@ -56,11 +56,16 @@
         <strong>json_item._id:</strong> {{ json_item._id }}<br>
         <strong>Prompt:</strong> {{ json_item.prompt }}<br>
         <strong>Response:</strong> {{ json_item.response }}<br>
+        <strong>Response Original:</strong> {{ json_item.original_response }}<br>
         <strong>Machine Feedback:</strong> {{ json_item.machine_feedback }}<br>
-        <strong>Human Feedback:</strong> {{ json_item.human_feedback }}<br>
         <div class="human_feedback-container">
-            <textarea id="human_feedback_{{json_item._id}}" class="human_feedback-editable form-control"
-                      style="color: blue;">{{ json_item.human_feedback }}</textarea>
+            <strong>Human Response:</strong> {{ json_item.human_repsonse }}<br>
+
+            <textarea id="human_response{{json_item._id}}" class="human_response-editable form-control"
+                      style="color: blue;">{{ json_item.human_response }}</textarea>
+            <strong>Human Reason:</strong> {{ json_item.human_reason }}<br>
+            <textarea id="human_reason{{json_item._id}}" class="human_reason-editable form-control"
+                      style="color: blue;">{{ json_item.human_reason }}</textarea>
             <button class="save-button btn btn-success">Save Human Feedback</button>
             <button class="delete-button btn btn-danger">Delete Json Item</button>
         </div>
@@ -92,23 +97,25 @@
         const human_feedbackContainers = document.querySelectorAll('.human_feedback-container');
 
         human_feedbackContainers.forEach(container => {
-            const textarea = container.querySelector('.human_feedback-editable');
+            const textareaHumanResponse = container.querySelector('.human_response-editable');
+            const textareaHumanReason = container.querySelector('.human_reason-editable');
             const saveButton = container.querySelector('.save-button');
             const deleteButton = container.querySelector('.delete-button');
 
             // Save changes when the Save button is clicked
             saveButton.addEventListener('click', function () {
                 // Get the JSON item ID and edited human_feedback text
-                const jsonItemId = textarea.id.split('_')[2];
-                const editedHumanFeedback = textarea.value;
-                console.log("textarea.id:", textarea.id);
+                const jsonItemId = textareaHumanResponse.id.split('human_response')[1]
+                const editedHumanResponse = textareaHumanResponse.value;
+                const editedHumanReason = textareaHumanReason.value;
+                console.log("textareaHumanResponse.id:", textareaHumanResponse.id);
                 console.log("jsonItemId:", jsonItemId);
-                console.log("editedHumanFeedback:", editedHumanFeedback);
 
                 // Send the edited data to the server using AJAX
                 fetch('/save_json_item', {
                     method: 'POST',
-                    body: JSON.stringify({json_item_id: jsonItemId, edited_human_feedback: editedHumanFeedback}),
+                    body: JSON.stringify({json_item_id: jsonItemId, edited_human_response: editedHumanResponse, edited_human_reason: editedHumanReason},
+                    ),
                     headers: {
                         'Content-Type': 'application/json',
                     },
@@ -134,7 +141,7 @@
             // Delete the JSON item when the Delete button is clicked
             deleteButton.addEventListener('click', function () {
                 // Get the JSON item ID from the textarea ID
-                const jsonItemId = textarea.id.split('_')[2];
+                const jsonItemId = textareaHumanResponse.id.split('human_response')[1]
 
                 // Send a request to delete the JSON item using AJAX
                 fetch('/delete_json_item', {

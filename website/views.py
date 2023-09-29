@@ -22,7 +22,8 @@ def home():
             prompt=item['prompt'],
             response=item['response'],
             machine_feedback=item.get('machine_feedback', ''),
-            human_feedback=item.get('human_feedback', ''),
+            human_response=item.get('human_response', ''),
+            human_reason=item.get('human_reason', ''),
             user_id=item.get('user_id', ''),
             _id=item.get('_id', ''),
             created_at=item.get('created_at', '')
@@ -56,6 +57,8 @@ def upload_json():
             for item in data_list:
                 prompt = item.get('prompt', '')
                 response = item.get('response', '')
+                original_response = item.get('original_response', '')
+                source = item.get('source', '')
                 current_datetime = datetime.now()
                 formatted_datetime = current_datetime.strftime('%Y-%m-%d %H:%M:%S')
 
@@ -63,10 +66,14 @@ def upload_json():
                 new_item = PromptResponse(
                     prompt=prompt,
                     response=response,
+                    original_response=original_response,
                     machine_feedback='',
-                    human_feedback='',
+                    human_check='',
+                    human_response='',
+                    human_reason='',
                     user_id=current_user.id,
                     _id=uuid.uuid4().hex,
+                    source=source,
                     created_at=formatted_datetime
                 )
                 mongo.db.prompt_responses.insert_one(new_item.__dict__)
@@ -123,19 +130,32 @@ def save_json_item():
     try:
         data = request.get_json()  # Retrieve JSON data from the request body
         json_item_id = data.get('json_item_id')
-        edited_human_feedback = data.get('edited_human_feedback')
+        edited_human_response = data.get('edited_human_response')
+        edited_human_reason = data.get('edited_human_reason')
+
         print('data:', data)
-        print('edited_human_feedback:', edited_human_feedback)
+        print('edited_human_response:', edited_human_response)
+        print('edited_human_reason:', edited_human_reason)
+
         print('json_item_id:', json_item_id)
+
+        update_document = {}
+
+        if edited_human_response !='':
+            update_document['human_response'] = edited_human_response
+
+        if edited_human_reason !='':
+            update_document['human_reason'] = edited_human_reason
 
         # Update the JSON item in the MongoDB collection
         mongo.db.prompt_responses.update_one(
             {'_id': json_item_id, 'user_id': current_user.id},
-            {'$set': {'human_feedback': edited_human_feedback}}
+            {'$set': update_document}
         )
 
         return jsonify(success=True, message='Changes saved')
     except Exception as e:
+        print(e)
         return jsonify(success=False, message=str(e))
 
 
@@ -165,6 +185,7 @@ def delete_all_json_items():
     try:
         # Delete all JSON items associated with the current user
         result = mongo.db.prompt_responses.delete_many({'user_id': current_user.id})
+        # result = mongo.db.prompt_responses.delete_many({})
 
         if result.deleted_count > 0:
             return jsonify(success=True, message='All items deleted')

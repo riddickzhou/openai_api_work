@@ -7,7 +7,7 @@ from .models import PromptResponse
 from . import mongo
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-MODEL = 'gpt-3.5-turbo'
+MODEL = 'gpt-4'
 INSTRUCTION_SYS = '你是一个题库错误梳理专家'
 INSTRUCTION_USER = """下面我会输入一些问题以及对应的答案，问题与答案用'-|-'分隔。任务是判断答案是否正确。如果正确返回'YES'，并以专家的口吻作答一遍; 如果不正确，返回'NO'，指出存在的问题并用中文重新生成正确答案。"""
 openai.api_key = OPENAI_API_KEY
@@ -19,7 +19,7 @@ def get_results(input_messages):
         response = openai.ChatCompletion.create(
             model=MODEL,
             messages=input_messages,
-            temperature=0,
+            temperature=1,
             max_tokens=3500
         )
         return response.choices[0].message['content']
