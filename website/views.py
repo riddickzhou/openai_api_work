@@ -21,6 +21,7 @@ def home():
         prompt_response = PromptResponse(
             prompt=item['prompt'],
             response=item['response'],
+            original_response=item['original_response'],
             machine_feedback=item.get('machine_feedback', ''),
             human_response=item.get('human_response', ''),
             human_reason=item.get('human_reason', ''),
