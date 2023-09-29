@@ -193,3 +193,11 @@ def delete_all_json_items():
             return jsonify(success=False, message='No items found to delete')
     except Exception as e:
         return jsonify(success=False, message=str(e))
+
+
+@views.route('/display_database')
+@login_required
+def display_database():
+    json_items = mongo.db.prompt_responses.find()
+    data = [item for item in json_items]
+    return render_template('display_database.html', data=data)

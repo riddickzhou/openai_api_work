@@ -49,7 +49,7 @@
 
 
 <!-- Display JsonItem data -->
-<h2>Database Items:</h2>
+<h2> Current User Data:</h2>
 <ul>
     {% for json_item in json_items %}
     <li>
@@ -114,7 +114,11 @@
                 // Send the edited data to the server using AJAX
                 fetch('/save_json_item', {
                     method: 'POST',
-                    body: JSON.stringify({json_item_id: jsonItemId, edited_human_response: editedHumanResponse, edited_human_reason: editedHumanReason},
+                    body: JSON.stringify({
+                            json_item_id: jsonItemId,
+                            edited_human_response: editedHumanResponse,
+                            edited_human_reason: editedHumanReason
+                        },
                     ),
                     headers: {
                         'Content-Type': 'application/json',
@@ -247,7 +251,7 @@
             modal.style.display = 'block';
         }
 
-// Function to hide the processing modal
+        // Function to hide the processing modal
         function hideProcessingModal() {
             const modal = document.getElementById('processingModal');
             modal.style.display = 'none';
@@ -259,10 +263,13 @@
 </div>
 
 <div style="position: absolute; top: 10px; right: 10px;">
+    <!-- Button to display all items -->
+    <a href="{{ url_for('views.display_database') }}" class="btn btn-primary" style="background-color: cadetblue;">Display Database (Full)</a>
+
     <!-- Button to delete all items -->
-    <button id="deleteAllItemsButton" class="btn btn-danger">Erase Database</button>
+    <button id="deleteAllItemsButton" class="btn btn-danger">Delete Database (User)</button>
     <!-- Add the download link at the top right -->
-    <a href="{{ url_for('views.download_json') }}" class="btn btn-primary" download>Download Database</a>
+    <a href="{{ url_for('views.download_json') }}" class="btn btn-primary" download>Download Database (Full)</a>
 </div>
 
 <!-- Modal -->

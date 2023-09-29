@@ -1,0 +1,33 @@
+<!-- new_tab.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Display Database Page</title>
+</head>
+<body>
+    <h1>Welcome to Display Database Page</h1>
+
+    <h2>Data from MongoDB:</h2>
+    <ul>
+        {% for document in data %}
+            <li>
+                <strong>~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~</strong><br>
+                <strong>Data Index:</strong> {{ loop.index }}<br>
+                <strong>Created At:</strong> {{ document.created_at }}<br>
+                <strong>User ID:</strong> {{ document.user_id }}<br>
+                <strong>Item ID:</strong> {{ document._id }}<br>
+                <strong>~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~</strong><br>
+                <strong>Prompt:</strong> {{ document.prompt }}<br>
+                <strong>Response:</strong> {{ document.response }}<br>
+                <strong>Response Original:</strong> {{ document.original_response }}<br>
+                <strong>Machine Feedback:</strong> {{ document.machine_feedback }}<br>
+                <strong>Human Response:</strong> {{ document.human_response }}<br>
+                <strong>Human Reason:</strong> {{ document.human_reason }}<br>
+                <strong>Source:</strong> {{ document.source }}<br>
+
+                <!-- Add other fields as needed -->
+            </li>
+        {% endfor %}
+    </ul>
+</body>
+</html>
