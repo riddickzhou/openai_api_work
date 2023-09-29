@@ -133,11 +133,11 @@ def save_json_item():
         edited_human_response = data.get('edited_human_response')
         edited_human_reason = data.get('edited_human_reason')
 
-        print('data:', data)
-        print('edited_human_response:', edited_human_response)
-        print('edited_human_reason:', edited_human_reason)
-
-        print('json_item_id:', json_item_id)
+        # print('data:', data)
+        # print('edited_human_response:', edited_human_response)
+        # print('edited_human_reason:', edited_human_reason)
+        #
+        # print('json_item_id:', json_item_id)
 
         update_document = {}
 
