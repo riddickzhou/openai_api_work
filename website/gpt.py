@@ -58,9 +58,12 @@ def generate_machine_feedback():
 
     # Iterate through the PromptResponse documents and update the machine_feedback field
     for prompt_response in prompt_responses:
-        message = build_messages(prompt_response['prompt'], prompt_response['response'])
-        # Update the machine_feedback field
-        prompt_response['machine_feedback'] = get_results(message)
+        message = build_messages(prompt_response['prompt'], prompt_response['original_response'])
+
+        if prompt_response['machine_feedback'] is None or prompt_response['machine_feedback'] == "None"\
+                or prompt_response['machine_feedback'] == '' or prompt_response['machine_feedback'] == 'Error':
+            # Update the machine_feedback field
+            prompt_response['machine_feedback'] = get_results(message)
         # prompt_response['machine_feedback'] = "dummy machine feedback added"
 
         # Save the updated document back to MongoDB
