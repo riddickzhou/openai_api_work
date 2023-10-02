@@ -55,12 +55,11 @@
     <li>
         <strong>json_item._id:</strong> {{ json_item._id }}<br>
         <strong>Prompt:</strong> {{ json_item.prompt }}<br>
-        <strong>Response:</strong> {{ json_item.response }}<br>
         <strong>Response Original:</strong> {{ json_item.original_response }}<br>
-        <strong>Machine Feedback:</strong> {{ json_item.machine_feedback }}<br>
+        <strong>Response:</strong> {{ json_item.response }}<br>
+        <strong>GPT4 Feedback:</strong> {{ json_item.machine_feedback }}<br>
         <div class="human_feedback-container">
-            <strong>Human Response:</strong> {{ json_item.human_repsonse }}<br>
-
+            <strong>Human Response:</strong> {{ json_item.human_response }}<br>
             <textarea id="human_response{{json_item._id}}" class="human_response-editable form-control"
                       style="color: blue;">{{ json_item.human_response }}</textarea>
             <strong>Human Reason:</strong> {{ json_item.human_reason }}<br>
@@ -173,6 +172,48 @@
                     });
             });
         });
+
+
+        // Handle the "Save All" button click event
+        const saveAllButton = document.getElementById('saveAllButton');
+        saveAllButton.addEventListener('click', function () {
+            const updates = [];
+
+            const humanResponses = document.querySelectorAll('.human_response-editable');
+            const humanReasons = document.querySelectorAll('.human_reason-editable');
+
+            humanResponses.forEach(textarea => {
+                const jsonItemId = textarea.id.split('human_response')[1];
+                const editedValue = textarea.value;
+                updates.push({json_item_id: jsonItemId, field: 'human_response', edited_value: editedValue});
+            });
+
+            humanReasons.forEach(textarea => {
+                const jsonItemId = textarea.id.split('human_reason')[1];
+                const editedValue = textarea.value;
+                updates.push({json_item_id: jsonItemId, field: 'human_reason', edited_value: editedValue});
+            });
+
+            fetch('/save_all_json_items', {
+                method: 'POST',
+                body: JSON.stringify({updates: updates}),
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('All feedback saved successfully.');
+                    } else {
+                        alert('Failed to save feedback.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+        });
+
         // Get references to the "Delete All Items" button
         const deleteAllItemsButton = document.getElementById('deleteAllItemsButton');
         // Add an event listener to the "Delete All Items" button
@@ -209,7 +250,8 @@
         const generateMachineFeedbackButton = document.getElementById('generateMachineFeedbackButton');
         generateMachineFeedbackButton.addEventListener('click', function () {
             // Display a confirmation dialog using the built-in JavaScript confirm() function
-            const confirmed = confirm('Are you sure you want to generate machine feedback? This will overwrite all existing machine feedback.');
+            // const confirmed = confirm('Are you sure you want to generate machine feedback? This will overwrite all existing machine feedback.');
+            const confirmed = confirm('Are you sure you want to generate machine feedback? This will NOT overwrite existing machine feedback.');
 
             // Check if the user confirmed the action
             if (confirmed) {
@@ -263,9 +305,12 @@
 </div>
 
 <div style="position: absolute; top: 10px; right: 10px;">
+    <!-- Button to Save all items -->
+    <button id="saveAllButton" class="btn btn-success">Save All (User)</button>
     <!-- Button to display all items -->
-    <a href="{{ url_for('views.display_database') }}" class="btn btn-primary" style="background-color: cadetblue;">Display Database (Full)</a>
-
+    <a href="{{ url_for('views.display_database') }}" class="btn btn-primary" style="background-color: cadetblue;">Display
+        Database (Full)</a>
+    <!--    <a href="{{ url_for('views.newpage') }}" class="btn btn-primary" style="background-color: cadetblue;">Display newpage (Full)</a>-->
     <!-- Button to delete all items -->
     <button id="deleteAllItemsButton" class="btn btn-danger">Delete Database (User)</button>
     <!-- Add the download link at the top right -->
