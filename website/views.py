@@ -160,6 +160,32 @@ def save_json_item():
         return jsonify(success=False, message=str(e))
 
 
+@views.route('/save_all_json_items', methods=['POST'])
+@login_required
+def save_all_json_items():
+    try:
+        data = request.get_json()  # Retrieve JSON data from the request body
+        updates = data.get('updates', [])
+
+        for update in updates:
+            json_item_id = update.get('json_item_id')
+            field = update.get('field')
+            edited_value = update.get('edited_value')
+
+            if field and edited_value.strip() != '':
+                update_document = {field: edited_value}
+
+                # Update the specific JSON item in the MongoDB collection
+                mongo.db.prompt_responses.update_one(
+                    {'_id': json_item_id, 'user_id': current_user.id},
+                    {'$set': update_document}
+                )
+
+        return jsonify(success=True, message='All Changes saved')
+    except Exception as e:
+        print(e)
+        return jsonify(success=False, message=str(e))
+
 # Server-side route to handle deleting a JSON item
 @views.route('/delete_json_item', methods=['POST'])
 @login_required
