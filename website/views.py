@@ -1,4 +1,4 @@
-from flask import Blueprint, Response, render_template, request, flash, redirect, jsonify, make_response
+from flask import Blueprint, Response, render_template, request, flash, redirect, jsonify, make_response, abort
 from . import mongo
 from flask_login import login_required, current_user
 import json
@@ -7,6 +7,8 @@ from bson import json_util
 from collections import defaultdict
 import uuid
 from datetime import datetime
+from bson import ObjectId  # Added ObjectId for converting string to ObjectId for MongoDB
+
 
 views = Blueprint('views', __name__)
 
@@ -21,8 +23,9 @@ def home():
         prompt_response = PromptResponse(
             prompt=item['prompt'],
             response=item['response'],
-            original_response=item['original_response'],
+            original_response=item.get('original_response', ''),
             machine_feedback=item.get('machine_feedback', ''),
+            human_prompt=item.get('human_prompt', ''),
             human_response=item.get('human_response', ''),
             human_reason=item.get('human_reason', ''),
             user_id=item.get('user_id', ''),
@@ -131,22 +134,15 @@ def save_json_item():
     try:
         data = request.get_json()  # Retrieve JSON data from the request body
         json_item_id = data.get('json_item_id')
+        edited_human_prompt = data.get('edited_human_prompt')
         edited_human_response = data.get('edited_human_response')
         edited_human_reason = data.get('edited_human_reason')
 
-        # print('data:', data)
-        # print('edited_human_response:', edited_human_response)
-        # print('edited_human_reason:', edited_human_reason)
-        #
-        # print('json_item_id:', json_item_id)
-
         update_document = {}
 
-        if edited_human_response !='':
-            update_document['human_response'] = edited_human_response
-
-        if edited_human_reason !='':
-            update_document['human_reason'] = edited_human_reason
+        update_document['human_prompt'] = edited_human_prompt
+        update_document['human_response'] = edited_human_response
+        update_document['human_reason'] = edited_human_reason
 
         # Update the JSON item in the MongoDB collection
         mongo.db.prompt_responses.update_one(
@@ -166,19 +162,18 @@ def save_all_json_items():
     try:
         data = request.get_json()  # Retrieve JSON data from the request body
         updates = data.get('updates', [])
+        print(updates)
 
         for update in updates:
             json_item_id = update.get('json_item_id')
             field = update.get('field')
             edited_value = update.get('edited_value')
+            update_document = {field: edited_value}
 
-            if field and edited_value.strip() != '':
-                update_document = {field: edited_value}
-
-                # Update the specific JSON item in the MongoDB collection
-                mongo.db.prompt_responses.update_one(
-                    {'_id': json_item_id, 'user_id': current_user.id},
-                    {'$set': update_document}
+            # Update the specific JSON item in the MongoDB collection
+            mongo.db.prompt_responses.update_one(
+                {'_id': json_item_id, 'user_id': current_user.id},
+                {'$set': update_document}
                 )
 
         return jsonify(success=True, message='All Changes saved')
@@ -228,3 +223,32 @@ def display_database():
     json_items = mongo.db.prompt_responses.find()
     data = [item for item in json_items]
     return render_template('display_database.html', data=data)
+
+
+
+@views.route('/newpage')
+@login_required
+def newpage():
+    return render_template('newpage.html')
+
+
+@views.route('/admin/approve_users', methods=['GET', 'POST'])
+@login_required
+def approve_users():
+    if not current_user.is_admin:
+        abort(403)  # Forbidden
+
+    if request.method == 'POST':
+        user_id = request.form.get('user_id')
+        user_data = mongo.db.users.find_one({'_id': ObjectId(user_id)})
+        if user_data:
+            mongo.db.users.update_one({'_id': ObjectId(user_id)}, {'$set': {'is_approved': True}})
+
+    unapproved_users = mongo.db.users.find({'is_approved': False})
+    return render_template('admin/approve_users.html', unapproved_users=unapproved_users)
+
+
+# @views.before_request
+# def check_approved():
+#     if not current_user.is_anonymous and not current_user.is_approved and request.endpoint not in ['login', 'register', 'static']:
+#         return render_template('awaiting_approval.html', user=current_user)

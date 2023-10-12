@@ -8,6 +8,7 @@ from . import mongo
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 MODEL = 'gpt-4'
+# MODEL = 'gpt-3.5-turbo'
 INSTRUCTION_SYS = '你是一个题库错误梳理专家'
 INSTRUCTION_USER = """下面我会输入一些问题以及对应的答案，问题与答案用'-|-'分隔。任务是判断答案是否正确。如果正确返回'YES'，并以专家的口吻作答一遍; 如果不正确，返回'NO'，指出存在的问题并用中文重新生成正确答案。"""
 openai.api_key = OPENAI_API_KEY
@@ -58,12 +59,34 @@ def generate_machine_feedback():
 
     # Iterate through the PromptResponse documents and update the machine_feedback field
     for prompt_response in prompt_responses:
-        message = build_messages(prompt_response['prompt'], prompt_response['original_response'])
+        message = build_messages(prompt_response['prompt'], prompt_response['response'])
 
         if prompt_response['machine_feedback'] is None or prompt_response['machine_feedback'] == "None"\
                 or prompt_response['machine_feedback'] == '' or prompt_response['machine_feedback'] == 'Error':
             # Update the machine_feedback field
             prompt_response['machine_feedback'] = get_results(message)
+        # prompt_response['machine_feedback'] = "dummy machine feedback added"
+
+        # Save the updated document back to MongoDB
+        mongo.db.prompt_responses.update_one(
+            {'_id': prompt_response['_id']},
+            {'$set': {'machine_feedback': prompt_response['machine_feedback']}}
+        )
+
+    return jsonify(success=True)
+
+@gpt.route('/generate_machine_feedback2', methods=['GET', 'POST'])
+@login_required
+def generate_machine_feedback2():
+    # Retrieve all PromptResponse documents from the MongoDB collection
+    prompt_responses = mongo.db.prompt_responses.find({'user_id': current_user.id})
+
+    # Iterate through the PromptResponse documents and update the machine_feedback field
+    for prompt_response in prompt_responses:
+        message = build_messages(prompt_response['prompt'], prompt_response['response'])
+
+        # Update the machine_feedback field
+        prompt_response['machine_feedback'] = get_results(message)
         # prompt_response['machine_feedback'] = "dummy machine feedback added"
 
         # Save the updated document back to MongoDB
