@@ -2,7 +2,7 @@ from flask import Blueprint, Response, render_template, request, flash, redirect
 from . import mongo
 from flask_login import login_required, current_user
 import json
-from .models import PromptResponse
+from .models_rl import PromptResponse
 from bson import json_util
 from collections import defaultdict
 import uuid
@@ -10,7 +10,7 @@ from datetime import datetime
 from bson import ObjectId  # Added ObjectId for converting string to ObjectId for MongoDB
 
 
-views = Blueprint('views', __name__)
+views = Blueprint('views_rl', __name__)
 
 
 @views.route('/', methods=['GET', 'POST'])
@@ -23,9 +23,7 @@ def home():
         prompt_response = PromptResponse(
             prompt=item['prompt'],
             response=item['response'],
-            original_response=item.get('original_response', ''),
             machine_feedback=item.get('machine_feedback', ''),
-            human_prompt=item.get('human_prompt', ''),
             human_response=item.get('human_response', ''),
             human_reason=item.get('human_reason', ''),
             user_id=item.get('user_id', ''),
@@ -61,7 +59,6 @@ def upload_json():
             for item in data_list:
                 prompt = item.get('prompt', '')
                 response = item.get('response', '')
-                original_response = item.get('original_response', '')
                 source = item.get('source', '')
                 current_datetime = datetime.now()
                 formatted_datetime = current_datetime.strftime('%Y-%m-%d %H:%M:%S')
@@ -70,7 +67,6 @@ def upload_json():
                 new_item = PromptResponse(
                     prompt=prompt,
                     response=response,
-                    original_response=original_response,
                     machine_feedback='',
                     human_check='',
                     human_response='',
@@ -87,7 +83,7 @@ def upload_json():
             flash(f'Error processing JSON file: {str(e)}', category='error')
 
     # Call the function to remove duplicates
-    remove_duplicate_json_items()
+    # remove_duplicate_json_items()
     return redirect('/')
 
 
@@ -224,28 +220,20 @@ def display_database():
     data = [item for item in json_items]
     return render_template('display_database.html', data=data)
 
-
-
-@views.route('/newpage')
-@login_required
-def newpage():
-    return render_template('newpage.html')
-
-
-@views.route('/admin/approve_users', methods=['GET', 'POST'])
-@login_required
-def approve_users():
-    if not current_user.is_admin:
-        abort(403)  # Forbidden
-
-    if request.method == 'POST':
-        user_id = request.form.get('user_id')
-        user_data = mongo.db.users.find_one({'_id': ObjectId(user_id)})
-        if user_data:
-            mongo.db.users.update_one({'_id': ObjectId(user_id)}, {'$set': {'is_approved': True}})
-
-    unapproved_users = mongo.db.users.find({'is_approved': False})
-    return render_template('admin/approve_users.html', unapproved_users=unapproved_users)
+# @views.route('/admin/approve_users', methods=['GET', 'POST'])
+# @login_required
+# def approve_users():
+#     if not current_user.is_admin:
+#         abort(403)  # Forbidden
+#
+#     if request.method == 'POST':
+#         user_id = request.form.get('user_id')
+#         user_data = mongo.db.users.find_one({'_id': ObjectId(user_id)})
+#         if user_data:
+#             mongo.db.users.update_one({'_id': ObjectId(user_id)}, {'$set': {'is_approved': True}})
+#
+#     unapproved_users = mongo.db.users.find({'is_approved': False})
+#     return render_template('admin/approve_users.html', unapproved_users=unapproved_users)
 
 
 # @views.before_request

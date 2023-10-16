@@ -12,14 +12,10 @@ class User(UserMixin):
 
 
 class PromptResponse:
-    def __init__(self, prompt, response, original_response=None, machine_feedback=None,
-                 human_check=None, human_prompt=None, human_response=None, human_reason=None,
-                 user_id=None, _id=None, source=None, created_at=None, **kwargs):
+    def __init__(self, prompt, response, machine_feedback=None,
+                 human_response=None, human_reason=None, user_id=None, _id=None, source=None, created_at=None, **kwargs):
         self.prompt = prompt
-        self.response = response
-        self.original_response = original_response
         self.machine_feedback = machine_feedback
-        self.human_prompt = human_prompt
         self.human_response = human_response
         self.human_reason = human_reason
         self.user_id = user_id
