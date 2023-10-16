@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <h2>Approve Users</h2>
+    {% if unapproved_users|length > 0 %}
+        <ul class="list-group">
+            {% for user in unapproved_users %}
+                <li class="list-group-item">
+                    <div class="row">
+                        <div class="col-sm-8">
+                            <strong>{{ user.email }}</strong> ({{ user.first_name }})
+                        </div>
+                        <div class="col-sm-4 text-right">
+                            <form method="post">
+                                <input type="hidden" name="user_id" value="{{ user._id }}">
+                                <button type="submit" class="btn btn-primary">Approve</button>
+                            </form>
+                        </div>
+                    </div>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>No users waiting for approval.</p>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,421 @@
+{% extends "base.html" %}
+
+{% block title %}Home{% endblock %}
+
+{% block content %}
+<h1 align="center">Prompt-Response Annotation System</h1>
+<ul class="list-group list-group-flush" id="notes">
+    {% for note in user.notes %}
+    <li class="list-group-item">
+        {{ note.data }}
+        <button type="button" class="close" onClick="deleteNote({{ note.id }})">
+            <span aria-hidden="true">&times;</span>
+        </button>
+        <br/>
+        <label for="processed_text">Processed Text:</label>
+        <textarea name="processed_text_{{ note.id }}" id="processed_text_{{ note.id }}" class="form-control"
+                  placeholder="Processed text for this note" readonly>{{ note.processed_data }}</textarea>
+        <br/>
+    </li>
+    {% endfor %}
+</ul>
+
+<!-- Display flash messages -->
+{% with messages = get_flashed_messages() %}
+{% if messages %}
+<ul class="messages">
+    {% for message in messages %}
+    <li>{{ message }}</li>
+    {% endfor %}
+</ul>
+{% endif %}
+{% endwith %}
+
+<!-- JSON file upload form -->
+<form method="POST" enctype="multipart/form-data" action="/upload_json">
+    <h2>Upload JSON File</h2>
+    <input type="file" name="json_file" id="jsonFileInput">
+    <div align="center">
+        <button type="submit" class="btn btn-primary" id="uploadButton" disabled>Upload</button>
+    </div>
+</form>
+
+<!-- JSON file upload form -->
+<h2>Generate Machine Feedback</h2>
+<div align="center">
+    <!-- Add the "Generate Machine Feedback" button beside the "Upload" button -->
+    <button id="generateMachineFeedbackButton" class="btn btn-primary">OpenAI API Call</button>
+<!--    <button id="generateMachineFeedback2Button" class="btn btn-primary">OpenAI API Call (with overwrite)</button>-->
+</div>
+
+<!--&lt;!&ndash; Added paragraph &ndash;&gt;-->
+<!--<h2>Task</h2>-->
+<!--<p style="line-height: 1.5;">-->
+<!--    判断给定的数据是否存在问题，并标注或修改。prompt包括各种类别的考题。-->
+<!--    主要判断response是否很好地回答了prompt，判断的维度包括相关性、通顺性、正确性。-->
+<!--    同时也需要检查prompt是否存在问题，比如缺少材料、缺少选项、问题无法回答等。-->
+<!--<ol style="line-height: 1.5;">-->
+<!--    <li> 相关性：response的内容是否与问题相关，是否回答了问题。</li>-->
+<!--    <li>-->
+<!--        通顺性：response的内容中是否存在不通顺的地方，包括错别字、语法错误、不符合中文说话习惯（如翻译腔）。也包括明显的题库解析风格，如包含“考点”之类的-->
+<!--    </li>-->
+<!--    <li>-->
+<!--        正确性：response的内容是否正确，包括分析过程的正确、计算过程的正确、最终答案的正确，以及其他比如使用的推理方法等的正确性-->
+<!--    </li>-->
+<!--</ol>-->
+<!--以上任意一点存在问题，response都是有问题的。请尤其关注正确性。当prompt或者response其中一个有问题时，则需要修改或者删除。输入数据包括以下字段:-->
+<!--<ol style="line-height: 1.5;">-->
+<!--    <li>“prompt”：原本的prompt（尽量确保不要改动，需要作为关键词匹配）</li>-->
+<!--    <li>“response”：原本的response</li>-->
+<!--    <li>“human prompt”：如果没有修改则留空</li>-->
+<!--    <li>“human response”：如果response没有错误，将其标记为YES。</li>-->
+<!--    <li>“human reason”：简述修改的原因</li>-->
+<!--</ol>-->
+<!--注意: 对于response的修改尽量控制在最小修改，不要做大范围的修改，以免改动了回复模式。如原始response问题较多，可采取删除操作（3、4都留空）。-->
+<!--<p></p>-->
+
+
+<!-- Display JsonItem data -->
+<h2> Current User Data:</h2>
+<ul>
+    {% for json_item in json_items %}
+    <li>
+        <strong>json_item._id:</strong> {{ json_item._id }}<br>
+        <strong>Prompt:</strong> {{ json_item.prompt }}<br>
+        <strong>Response:</strong> {{ json_item.response }}<br>
+        <strong>Machine Feedback:</strong> {{ json_item.machine_feedback }}<br>
+        <div class="human_feedback-container">
+            <strong>Human Response:</strong> {{ json_item.human_response }}<br>
+            <textarea id="human_response{{json_item._id}}" class="human_response-editable form-control"
+                      style="color: blue;">{{ json_item.human_response }}</textarea>
+            <strong>Human Reason:</strong> {{ json_item.human_reason }}<br>
+            <textarea id="human_reason{{json_item._id}}" class="human_reason-editable form-control"
+                      style="color: blue;">{{ json_item.human_reason }}</textarea>
+            <button class="save-button btn btn-success">Save </button>
+            <button class="save-all-button btn btn-success">Save All</button>
+            <button class="delete-button btn btn-danger">Delete Json Item</button>
+        </div>
+    </li>
+    {% endfor %}
+</ul>
+
+
+<script>
+    // JavaScript to handle enabling/disabling the "Upload" button based on file selection
+    // Get references to the file input and the "Upload" button
+    const fileInput = document.getElementById('jsonFileInput');
+    const uploadButton = document.getElementById('uploadButton');
+
+    // Add an event listener to the file input
+    fileInput.addEventListener('change', function () {
+        if (fileInput.files.length > 0) {
+            // A file has been selected, enable the "Upload" button
+            uploadButton.disabled = false;
+        } else {
+            // No file selected, disable the "Upload" button
+            uploadButton.disabled = true;
+        }
+    });
+
+    // JavaScript to handle editing, saving, and deleting JSON items
+    document.addEventListener('DOMContentLoaded', function () {
+        // Get references to editable textareas, Edit buttons, Save buttons, and Delete buttons
+        const human_feedbackContainers = document.querySelectorAll('.human_feedback-container');
+
+        human_feedbackContainers.forEach(container => {
+            const textareaHumanPrompt = container.querySelector('.human_prompt-editable');
+            const textareaHumanResponse = container.querySelector('.human_response-editable');
+            const textareaHumanReason = container.querySelector('.human_reason-editable');
+            const saveButton = container.querySelector('.save-button');
+            const saveAllButton = container.querySelector('.save-all-button');
+            const deleteButton = container.querySelector('.delete-button');
+
+            saveAllButton.addEventListener('click', function () {
+                const humanPrompt = document.querySelectorAll('.human_prompt-editable');
+                const humanResponses = document.querySelectorAll('.human_response-editable');
+                const humanReasons = document.querySelectorAll('.human_reason-editable');
+
+                let updates = [];
+                humanPrompt.forEach(textarea => {
+                    const jsonItemId = textarea.id.split('human_prompt')[1];
+                    const editedValue = textarea.value;
+                    updates.push({
+                        json_item_id: jsonItemId,
+                        field: 'human_prompt',
+                        edited_value: editedValue
+                    });
+                });
+                humanResponses.forEach(textarea => {
+                    const jsonItemId = textarea.id.split('human_response')[1];
+                    const editedValue = textarea.value;
+                    updates.push({
+                        json_item_id: jsonItemId,
+                        field: 'human_response',
+                        edited_value: editedValue
+                    });
+                });
+                humanReasons.forEach(textarea => {
+                    const jsonItemId = textarea.id.split('human_reason')[1];
+                    const editedValue = textarea.value;
+                    updates.push({
+                        json_item_id: jsonItemId,
+                        field: 'human_reason',
+                        edited_value: editedValue
+                    });
+                });
+
+
+                fetch('/save_all_json_items', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        updates: updates
+                    }),
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                })
+                    // .then(response => response.json())
+                    .then(response => response.text())  // <-- Change here to get the raw text response
+                    .then(text => {
+                        return JSON.parse(text);  // Then try to parse it as JSON
+                    })
+                    .then(data => {
+                        if (data.success) {
+                            alert('All human feedbacks are saved successfully.');
+                            // Refresh the page
+                            window.location.reload();
+                        } else {
+                            alert('Failed to save feedback.');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                    });
+            });
+
+            // Save changes when the Save button is clicked
+            saveButton.addEventListener('click', function () {
+                // Get the JSON item ID and edited human_feedback text
+                const jsonItemId = textareaHumanResponse.id.split('human_response')[1]
+                const editedHumanPrompt = textareaHumanPrompt.value;
+                const editedHumanResponse = textareaHumanResponse.value;
+                const editedHumanReason = textareaHumanReason.value;
+                console.log("textareaHumanResponse.id:", textareaHumanResponse.id);
+                console.log("jsonItemId:", jsonItemId);
+
+                // Send the edited data to the server using AJAX
+                fetch('/save_json_item', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                            json_item_id: jsonItemId,
+                            edited_human_prompt: editedHumanPrompt,
+                            edited_human_response: editedHumanResponse,
+                            edited_human_reason: editedHumanReason
+                        },
+                    ),
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                })
+                    .then(human_feedback => human_feedback.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Update the success message or UI as needed
+                            saveButton.style.display = 'inline-block';
+
+                            // Refresh the page
+                            window.location.reload();
+                        } else {
+                            // Handle the error case
+                            alert('Failed to save changes.');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                    });
+            });
+
+            // Delete the JSON item when the Delete button is clicked
+            deleteButton.addEventListener('click', function () {
+                // Get the JSON item ID from the textarea ID
+                const jsonItemId = textareaHumanResponse.id.split('human_response')[1]
+
+                // Send a request to delete the JSON item using AJAX
+                fetch('/delete_json_item', {
+                    method: 'POST',
+                    body: JSON.stringify({json_item_id: jsonItemId}),
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                })
+                    .then(human_feedback => human_feedback.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Refresh the page
+                            window.location.reload();
+
+                            // // Remove the item from the UI
+                            // container.remove();
+                        } else {
+                            // Handle the error case
+                            alert('Failed to delete item.');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                    });
+            });
+        });
+
+        // Get references to the "Delete All Items" button
+        const deleteAllItemsButton = document.getElementById('deleteAllItemsButton');
+        // Add an event listener to the "Delete All Items" button
+        deleteAllItemsButton.addEventListener('click', function () {
+            // Display a confirmation dialog using the built-in JavaScript confirm() function
+            const confirmed = confirm('Are you sure you want to delete all items? This action cannot be undone.');
+
+            // Check if the user confirmed the action
+            if (confirmed) {
+                // Send a request to delete all items using AJAX
+                fetch('/delete_all_json_items', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                })
+                    .then(human_feedback => human_feedback.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Refresh the page to reflect the deleted items
+                            window.location.reload();
+                        } else {
+                            // Handle the error case
+                            alert('Failed to delete all items.');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                    });
+            }
+        });
+
+        // Add an event listener to the "Generate Machine Feedback" button
+        const generateMachineFeedbackButton = document.getElementById('generateMachineFeedbackButton');
+        generateMachineFeedbackButton.addEventListener('click', function () {
+            // Display a confirmation dialog using the built-in JavaScript confirm() function
+            // const confirmed = confirm('Are you sure you want to generate machine feedback? This will overwrite all existing machine feedback.');
+            const confirmed = confirm('Are you sure you want to generate machine feedback? This will NOT overwrite existing machine feedback.');
+
+            // Check if the user confirmed the action
+            if (confirmed) {
+                // Display the processing modal before starting the operation
+                showProcessingModal();
+
+                // Send a request to the server to generate machine feedback
+                fetch('/gpt/generate_machine_feedback', {
+                    method: 'POST',
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        // Hide the processing modal when the request is complete
+                        hideProcessingModal();
+                        if (data.success) {
+                            // Refresh the page to reflect the generated machine feedback
+                            window.location.reload();
+                            // Handle the success case, such as displaying or using the generated machine feedback
+                            alert('Machine feedback generated successfully.');
+                        } else {
+                            // Handle the error case
+                            alert('Failed to generate machine feedback.');
+                        }
+                    })
+                    .catch(error => {
+                        // Hide the processing modal on error
+                        hideProcessingModal();
+                        console.error('Error:', error);
+                    });
+            } else {
+                // If the user canceled, simply refresh the page
+                window.location.reload();
+            }
+        });
+
+        // Add an event listener to the "Generate Machine Feedback" button
+        const generateMachineFeedback2Button = document.getElementById('generateMachineFeedback2Button');
+        generateMachineFeedback2Button.addEventListener('click', function () {
+            // Display a confirmation dialog using the built-in JavaScript confirm() function
+            // const confirmed = confirm('Are you sure you want to generate machine feedback? This will overwrite all existing machine feedback.');
+            const confirmed = confirm('Are you sure you want to generate machine feedback? This WILL overwrite existing machine feedback.');
+
+            // Check if the user confirmed the action
+            if (confirmed) {
+                // Display the processing modal before starting the operation
+                showProcessingModal();
+
+                // Send a request to the server to generate machine feedback
+                fetch('/gpt/generate_machine_feedback2', {
+                    method: 'POST',
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        // Hide the processing modal when the request is complete
+                        hideProcessingModal();
+                        if (data.success) {
+                            // Refresh the page to reflect the generated machine feedback
+                            window.location.reload();
+                            // Handle the success case, such as displaying or using the generated machine feedback
+                            alert('Machine feedback generated successfully.');
+                        } else {
+                            // Handle the error case
+                            alert('Failed to generate machine feedback.');
+                        }
+                    })
+                    .catch(error => {
+                        // Hide the processing modal on error
+                        hideProcessingModal();
+                        console.error('Error:', error);
+                    });
+            } else {
+                // If the user canceled, simply refresh the page
+                window.location.reload();
+            }
+        });
+
+        // Function to show the processing modal
+        function showProcessingModal() {
+            const modal = document.getElementById('processingModal');
+            modal.style.display = 'block';
+        }
+
+        // Function to hide the processing modal
+        function hideProcessingModal() {
+            const modal = document.getElementById('processingModal');
+            modal.style.display = 'none';
+        }
+    });
+
+
+</script>
+</div>
+
+<div style="position: absolute; top: 10px; right: 10px;">
+    <!-- Button to Save all items -->
+    <!-- Button to display all items -->
+    <a href="{{ url_for('views.display_database') }}" class="btn btn-primary" style="background-color: cadetblue;">Display
+        Database (Full)</a>
+    <!-- Button to delete all items -->
+    <button id="deleteAllItemsButton" class="btn btn-danger">Delete Database (User)</button>
+    <!-- Add the download link at the top right -->
+    <a href="{{ url_for('views.download_json') }}" class="btn btn-primary" download>Download Database (Full)</a>
+</div>
+
+<!-- Modal -->
+<div id="processingModal" class="modal">
+    <div class="modal-content">
+        <div class="loader"></div> <!-- Loading spinner or custom message -->
+        <p>Processing OpenAI API Request...</p> <!-- Optional message -->
+    </div>
+</div>
+
+
+{% endblock %}
