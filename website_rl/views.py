@@ -9,7 +9,7 @@ import uuid
 from datetime import datetime
 from bson import ObjectId  # Added ObjectId for converting string to ObjectId for MongoDB
 import ast
-
+import re
 views = Blueprint('views', __name__)
 
 @views.route('/', methods=['GET', 'POST'])
@@ -78,9 +78,9 @@ def upload_json():
                 # Iterate through the responses and extract each 助手's response
                 for i in range(len(responses)-1):
                     lines = responses[i].split('\n')
-                    key = lines[0].strip('助手')
+                    key = lines[0][:-1]
                     value = '\n'.join(lines[1:]).strip()
-                    parsed_responses[f"助手{key}"] = value
+                    parsed_responses[key] = value
 
                 source = item.get('source', '')
                 current_datetime = datetime.now()

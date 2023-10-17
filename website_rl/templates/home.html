@@ -82,8 +82,21 @@
     <li>
         <strong>json_item._id:</strong> {{ json_item._id }}<br>
         <strong>Prompt:</strong> {{ json_item.prompt }}<br>
-        <strong>Response:</strong> {{ json_item.response }}<br>
-        <strong>Machine Feedback:</strong> {{ json_item.machine_feedback }}<br>
+        <!-- Handling Response as a dictionary -->
+        <strong>Response:</strong>
+        <ul style="list-style-type:none;"> <!-- Unordered list without bullets for Response -->
+            {% for key, value in json_item.response.items() %}
+                <li><strong>{{ key }}:</strong> {{ value }}</li> <!-- Display each key-value pair from Response -->
+            {% endfor %}
+        </ul>
+        <strong>Machine Feedback:</strong>
+        <ul style="list-style-type:none;"> <!-- Unordered list without bullets -->
+            {% for key, value in json_item.machine_feedback.items() %}
+                <li><strong>{{ key }}:</strong> {{ value }}</li> <!-- Display each key-value pair -->
+            {% endfor %}
+        </ul>
+        <strong>Machine Reason:</strong>{{ json_item.machine_reason }}<br>
+
         <div class="human_feedback-container">
             <strong>Human Response:</strong> {{ json_item.human_response }}<br>
             <textarea id="human_response{{json_item._id}}" class="human_response-editable form-control"
